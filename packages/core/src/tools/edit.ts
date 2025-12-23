@@ -98,6 +98,7 @@ interface CalculatedEdit {
   occurrences: number;
   error?: { display: string; raw: string; type: ToolErrorType };
   isNewFile: boolean;
+  originalLineEnding: 'CRLF' | 'LF';
 }
 
 class EditToolInvocation implements ToolInvocation<EditToolParams, ToolResult> {
@@ -124,6 +125,7 @@ class EditToolInvocation implements ToolInvocation<EditToolParams, ToolResult> {
     const finalNewString = params.new_string;
     const finalOldString = params.old_string;
     let occurrences = 0;
+    let originalLineEnding: 'CRLF' | 'LF' = 'LF';
     let error:
       | { display: string; raw: string; type: ToolErrorType }
       | undefined = undefined;
@@ -132,6 +134,7 @@ class EditToolInvocation implements ToolInvocation<EditToolParams, ToolResult> {
       currentContent = await this.config
         .getFileSystemService()
         .readTextFile(params.file_path);
+      originalLineEnding = currentContent.includes('\r\n') ? 'CRLF' : 'LF';
       // Normalize line endings to LF for consistent processing.
       currentContent = currentContent.replace(/\r\n/g, '\n');
       fileExists = true;
@@ -217,6 +220,7 @@ class EditToolInvocation implements ToolInvocation<EditToolParams, ToolResult> {
       occurrences,
       error,
       isNewFile,
+      originalLineEnding,
     };
   }
 
@@ -361,9 +365,13 @@ class EditToolInvocation implements ToolInvocation<EditToolParams, ToolResult> {
 
     try {
       this.ensureParentDirectoriesExist(this.params.file_path);
+      let contentToWrite = editData.newContent;
+      if (editData.originalLineEnding === 'CRLF') {
+        contentToWrite = contentToWrite.replace(/\n/g, '\r\n');
+      }
       await this.config
         .getFileSystemService()
-        .writeTextFile(this.params.file_path, editData.newContent);
+        .writeTextFile(this.params.file_path, contentToWrite);
 
       let displayResult: ToolResultDisplay;
       const fileName = path.basename(this.params.file_path);
