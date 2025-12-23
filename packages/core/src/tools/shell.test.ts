@@ -207,7 +207,10 @@ describe('ShellTool', () => {
       await promise;
 
       const tmpFile = path.join(os.tmpdir(), 'shell_pgrep_abcdef.tmp');
-      const wrappedCommand = `{ npm start & }; __code=$?; pgrep -g 0 >${tmpFile} 2>&1; exit $__code;`;
+      const logFile = path.resolve(
+        '/test/dir/.blackbox/tmp/shell_tool_abcdef.log',
+      );
+      const wrappedCommand = `{ npm start > "${logFile}" 2>&1 & }; __code=$?; pgrep -g 0 >${tmpFile} 2>&1; exit $__code;`;
       expect(mockShellExecutionService).toHaveBeenCalledWith(
         wrappedCommand,
         expect.any(String),
@@ -233,7 +236,10 @@ describe('ShellTool', () => {
       await promise;
 
       const tmpFile = path.join(os.tmpdir(), 'shell_pgrep_abcdef.tmp');
-      const wrappedCommand = `{ npm start & }; __code=$?; pgrep -g 0 >${tmpFile} 2>&1; exit $__code;`;
+      const logFile = path.resolve(
+        '/test/dir/.blackbox/tmp/shell_tool_abcdef.log',
+      );
+      const wrappedCommand = `{ npm start > "${logFile}" 2>&1 & }; __code=$?; pgrep -g 0 >${tmpFile} 2>&1; exit $__code;`;
       expect(mockShellExecutionService).toHaveBeenCalledWith(
         wrappedCommand,
         expect.any(String),
@@ -764,6 +770,37 @@ describe('ShellTool', () => {
         expect(mockShellExecutionService).toHaveBeenCalledWith(
           expect.stringContaining(
             'Co-authored-by: Custom Bot <custom@example.com>',
+          ),
+          expect.any(String),
+          expect.any(Function),
+          mockAbortSignal,
+          false,
+          undefined,
+          undefined,
+        );
+      });
+
+      it('should add co-author to git commit with unquoted message', async () => {
+        const command = 'git commit -m Fix_bug_unquoted';
+        const invocation = shellTool.build({ command, is_background: false });
+        const promise = invocation.execute(mockAbortSignal);
+
+        resolveExecutionPromise({
+          rawOutput: Buffer.from(''),
+          output: '',
+          exitCode: 0,
+          signal: null,
+          error: null,
+          aborted: false,
+          pid: 12345,
+          executionMethod: 'child_process',
+        });
+
+        await promise;
+
+        expect(mockShellExecutionService).toHaveBeenCalledWith(
+          expect.stringContaining(
+            'Co-authored-by: BlackboxAI <code@blackbox.ai>',
           ),
           expect.any(String),
           expect.any(Function),

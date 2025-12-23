@@ -374,16 +374,28 @@ class ShellToolInvocation extends BaseToolInvocation<
 Co-authored-by: ${gitCoAuthorSettings.name} <${gitCoAuthorSettings.email}>`;
 
     // Handle different git commit patterns
-    // Match -m "message" or -m 'message'
-    const messagePattern = /(-m\s+)(['"])((?:\\.|[^\\])*?)(\2)/;
+    const messagePattern = /(-m\s+)(?:(['"])((?:\\.|[^\\])*?)(\2)|([^\s]+))/;
     const match = command.match(messagePattern);
 
     if (match) {
-      const [fullMatch, prefix, quote, existingMessage, closingQuote] = match;
-      const newMessage = existingMessage + coAuthor;
-      const replacement = prefix + quote + newMessage + closingQuote;
+      const [
+        fullMatch,
+        prefix,
+        quote,
+        quotedMessage,
+        _closingQuote,
+        unquotedMessage,
+      ] = match;
 
-      return command.replace(fullMatch, replacement);
+      if (quote) {
+        const newMessage = quotedMessage + coAuthor;
+        const replacement = prefix + quote + newMessage + quote;
+        return command.replace(fullMatch, replacement);
+      } else {
+        const newMessage = unquotedMessage + coAuthor;
+        const replacement = prefix + '"' + newMessage + '"';
+        return command.replace(fullMatch, replacement);
+      }
     }
 
     // If no -m flag found, the command might open an editor
