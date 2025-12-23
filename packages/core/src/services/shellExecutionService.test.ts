@@ -537,7 +537,7 @@ describe('ShellExecutionService child_process fallback', () => {
       );
 
       // Now, advance time past the timeout
-      await vi.advanceTimersByTimeAsync(250);
+      await vi.advanceTimersByTimeAsync(5050);
 
       // Check the second kill signal
       expect(mockProcessKill).toHaveBeenCalledWith(

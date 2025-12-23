@@ -15,7 +15,7 @@ import { getCachedEncodingForBuffer } from '../utils/systemEncoding.js';
 import { isBinary } from '../utils/textUtils.js';
 const { Terminal } = pkg;
 
-const SIGKILL_TIMEOUT_MS = 200;
+const SIGKILL_TIMEOUT_MS = 5000;
 
 // @ts-expect-error getFullText is not a public API.
 const getFullText = (terminal: Terminal) => {
