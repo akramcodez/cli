@@ -35,8 +35,29 @@ import {
   isCommandNeedsPermission,
   stripShellWrapper,
 } from '../utils/shell-utils.js';
+import { execSync } from 'node:child_process';
 
 export const OUTPUT_UPDATE_INTERVAL_MS = 1000;
+
+function getWindowsChildPids(parentPid: number): number[] {
+  try {
+    const output = execSync(
+      `powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object {$_.ParentProcessId -eq ${parentPid}} | Select-Object -ExpandProperty ProcessId"`,
+      { encoding: 'utf8', timeout: 5000, windowsHide: true },
+    );
+    const pids: number[] = [];
+    for (const line of output.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (/^\d+$/.test(trimmed)) {
+        pids.push(Number(trimmed));
+      }
+    }
+    return pids;
+  } catch (error) {
+    console.warn('Failed to get Windows child PIDs:', error);
+    return [];
+  }
+}
 
 export interface ShellToolParams {
   command: string;
@@ -232,7 +253,12 @@ class ShellToolInvocation extends BaseToolInvocation<
       const result = await resultPromise;
 
       const backgroundPIDs: number[] = [];
-      if (os.platform() !== 'win32') {
+      if (isWindows) {
+        if (result.pid) {
+          const childPids = getWindowsChildPids(result.pid);
+          backgroundPIDs.push(...childPids);
+        }
+      } else {
         if (fs.existsSync(tempFilePath)) {
           const pgrepLines = fs
             .readFileSync(tempFilePath, 'utf8')
