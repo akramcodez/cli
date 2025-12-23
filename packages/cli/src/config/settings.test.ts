@@ -148,7 +148,13 @@ describe('Settings Loading and Merging', () => {
           disabled: [],
           workspacesWithMigrationNudge: [],
         },
-        security: {},
+        security: {
+          auth: {
+            blackbox: {},
+            openai: {},
+            openrouter: {},
+          },
+        },
         general: {},
         privacy: {},
         telemetry: {},
@@ -211,7 +217,13 @@ describe('Settings Loading and Merging', () => {
           disabled: [],
           workspacesWithMigrationNudge: [],
         },
-        security: {},
+        security: {
+          auth: {
+            blackbox: {},
+            openai: {},
+            openrouter: {},
+          },
+        },
         general: {},
         privacy: {},
         telemetry: {},
@@ -277,7 +289,13 @@ describe('Settings Loading and Merging', () => {
           disabled: [],
           workspacesWithMigrationNudge: [],
         },
-        security: {},
+        security: {
+          auth: {
+            blackbox: {},
+            openai: {},
+            openrouter: {},
+          },
+        },
         general: {},
         privacy: {},
         telemetry: {},
@@ -340,7 +358,13 @@ describe('Settings Loading and Merging', () => {
           disabled: [],
           workspacesWithMigrationNudge: [],
         },
-        security: {},
+        security: {
+          auth: {
+            blackbox: {},
+            openai: {},
+            openrouter: {},
+          },
+        },
         general: {},
         privacy: {},
         telemetry: {},
@@ -413,7 +437,13 @@ describe('Settings Loading and Merging', () => {
         model: {
           chatCompression: {},
         },
-        security: {},
+        security: {
+          auth: {
+            blackbox: {},
+            openai: {},
+            openrouter: {},
+          },
+        },
         general: {},
         privacy: {},
         telemetry: {},
@@ -507,7 +537,13 @@ describe('Settings Loading and Merging', () => {
         model: {
           chatCompression: {},
         },
-        security: {},
+        security: {
+          auth: {
+            blackbox: {},
+            openai: {},
+            openrouter: {},
+          },
+        },
         general: {},
         privacy: {},
         ide: {},
@@ -591,7 +627,13 @@ describe('Settings Loading and Merging', () => {
           disabled: [],
           workspacesWithMigrationNudge: [],
         },
-        security: {},
+        security: {
+          auth: {
+            blackbox: {},
+            openai: {},
+            openrouter: {},
+          },
+        },
         privacy: {},
         telemetry: {},
         tools: {},
@@ -728,7 +770,13 @@ describe('Settings Loading and Merging', () => {
         model: {
           chatCompression: {},
         },
-        security: {},
+        security: {
+          auth: {
+            blackbox: {},
+            openai: {},
+            openrouter: {},
+          },
+        },
         telemetry: {},
         tools: {
           sandbox: false,
@@ -1466,7 +1514,13 @@ describe('Settings Loading and Merging', () => {
           disabled: [],
           workspacesWithMigrationNudge: [],
         },
-        security: {},
+        security: {
+          auth: {
+            blackbox: {},
+            openai: {},
+            openrouter: {},
+          },
+        },
         general: {},
         privacy: {},
         tools: {},
@@ -1926,7 +1980,13 @@ describe('Settings Loading and Merging', () => {
             disabled: [],
             workspacesWithMigrationNudge: [],
           },
-          security: {},
+          security: {
+            auth: {
+              blackbox: {},
+              openai: {},
+              openrouter: {},
+            },
+          },
           general: {},
           privacy: {},
           telemetry: {},
@@ -2464,6 +2524,39 @@ describe('Settings Loading and Merging', () => {
         },
         allowMCPServers: ['serverA'],
       });
+    });
+
+    it('should preserve unmapped nested properties during partial migration', () => {
+      const v2Settings: Record<string, unknown> = {
+        general: {
+          preferredEditor: 'vscode',
+          newFeatureFlag: true,
+        },
+        security: {
+          folderTrust: { enabled: true },
+          auth: {
+            selectedType: 'api-key',
+            blackbox: { apiKey: 'secret' },
+          },
+        },
+      };
+
+      const v1Settings = migrateSettingsToV1(v2Settings);
+
+      expect(v1Settings['preferredEditor']).toBe('vscode');
+      expect(v1Settings['folderTrust']).toBe(true);
+      expect(v1Settings['selectedAuthType']).toBe('api-key');
+
+      expect(
+        (v1Settings['general'] as Record<string, unknown>)?.['newFeatureFlag'],
+      ).toBe(true);
+      expect(
+        (
+          (v1Settings['security'] as Record<string, unknown>)?.[
+            'auth'
+          ] as Record<string, unknown>
+        )?.['blackbox'],
+      ).toEqual({ apiKey: 'secret' });
     });
   });
 });

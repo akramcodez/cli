@@ -18,7 +18,7 @@ import { DefaultLight } from '../ui/themes/default-light.js';
 import { DefaultDark } from '../ui/themes/default.js';
 import { isWorkspaceTrusted } from './trustedFolders.js';
 import type { Settings, MemoryImportFormat } from './settingsSchema.js';
-import { mergeWith } from 'lodash-es';
+import { mergeWith, unset } from 'lodash-es';
 
 export type { Settings, MemoryImportFormat };
 
@@ -222,58 +222,93 @@ export function migrateSettingsToV1(
   v2Settings: Record<string, unknown>,
 ): Record<string, unknown> {
   const v1Settings: Record<string, unknown> = {};
-  const v2Keys = new Set(Object.keys(v2Settings));
+  const consumedPaths = new Set<string>();
 
   for (const [newPath, oldKey] of Object.entries(REVERSE_MIGRATION_MAP)) {
     const value = getNestedProperty(v2Settings, newPath);
     if (value !== undefined) {
       v1Settings[oldKey] = value;
-      v2Keys.delete(newPath.split('.')[0]);
+      consumedPaths.add(newPath);
     }
   }
 
   // Preserve mcpServers at the top level
   if (v2Settings['mcpServers']) {
     v1Settings['mcpServers'] = v2Settings['mcpServers'];
-    v2Keys.delete('mcpServers');
+    consumedPaths.add('mcpServers');
   }
 
-  // Preserve provider credentials in security.auth (V2 format)
-  // These are new fields that don't have V1 equivalents, so we keep them in V2 format
-  const security = v2Settings['security'] as Record<string, unknown> | undefined;
-  if (security && typeof security === 'object') {
-    const auth = security['auth'] as Record<string, unknown> | undefined;
-    if (auth && typeof auth === 'object') {
-      // Preserve the entire security.auth structure with provider credentials
-      if (!v1Settings['security']) {
-        v1Settings['security'] = {};
-      }
-      (v1Settings['security'] as Record<string, unknown>)['auth'] = auth;
-    }
-  }
-
-  // Carry over any unrecognized keys
-  for (const remainingKey of v2Keys) {
-    const value = v2Settings[remainingKey];
+  for (const key of Object.keys(v2Settings)) {
+    const value = v2Settings[key];
     if (value === undefined) {
       continue;
     }
 
-    // Don't carry over empty objects that were just containers for migrated settings.
-    if (
-      KNOWN_V2_CONTAINERS.has(remainingKey) &&
-      typeof value === 'object' &&
-      value !== null &&
-      !Array.isArray(value) &&
-      Object.keys(value).length === 0
-    ) {
+    if (consumedPaths.has(key)) {
       continue;
     }
 
-    v1Settings[remainingKey] = value;
+    const consumedChildren = Array.from(consumedPaths).filter((p) =>
+      p.startsWith(`${key}.`),
+    );
+
+    if (
+      consumedChildren.length > 0 &&
+      typeof value === 'object' &&
+      value !== null &&
+      !Array.isArray(value)
+    ) {
+      const remaining = structuredClone(value);
+      for (const childPath of consumedChildren) {
+        const relativePath = childPath.slice(key.length + 1);
+        unset(remaining, relativePath);
+      }
+
+      const cleaned = removeEmptyObjects(remaining);
+
+      if (
+        typeof cleaned === 'object' &&
+        cleaned !== null &&
+        Object.keys(cleaned).length > 0
+      ) {
+        v1Settings[key] = cleaned as Record<string, unknown>;
+      }
+    } else {
+      if (
+        KNOWN_V2_CONTAINERS.has(key) &&
+        typeof value === 'object' &&
+        value !== null &&
+        !Array.isArray(value) &&
+        Object.keys(value).length === 0
+      ) {
+        continue;
+      }
+      v1Settings[key] = value;
+    }
   }
 
   return v1Settings;
+}
+
+function removeEmptyObjects(obj: unknown): unknown {
+  if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
+    const newObj = { ...obj } as Record<string, unknown>;
+    for (const key of Object.keys(newObj)) {
+      const cleanVal = removeEmptyObjects(newObj[key]);
+      if (
+        typeof cleanVal === 'object' &&
+        cleanVal !== null &&
+        !Array.isArray(cleanVal) &&
+        Object.keys(cleanVal).length === 0
+      ) {
+        delete newObj[key];
+      } else {
+        newObj[key] = cleanVal;
+      }
+    }
+    return newObj;
+  }
+  return obj;
 }
 
 function mergeSettings(
