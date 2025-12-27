@@ -320,7 +320,7 @@ describe('escapeShellArg', () => {
 
     it('should handle empty strings', () => {
       const result = escapeShellArg('', 'bash');
-      expect(result).toBe('');
+      expect(result).toBe("''");
       expect(mockQuote).not.toHaveBeenCalled();
     });
   });
@@ -339,7 +339,7 @@ describe('escapeShellArg', () => {
 
       it('should handle empty strings', () => {
         const result = escapeShellArg('', 'cmd');
-        expect(result).toBe('');
+        expect(result).toBe('""');
       });
     });
 
@@ -361,7 +361,7 @@ describe('escapeShellArg', () => {
 
       it('should handle empty strings', () => {
         const result = escapeShellArg('', 'powershell');
-        expect(result).toBe('');
+        expect(result).toBe("''");
       });
     });
   });
