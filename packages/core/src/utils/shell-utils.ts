@@ -90,7 +90,16 @@ export const isWindows = () => os.platform() === 'win32';
  */
 export function escapeShellArg(arg: string, shell: ShellType): string {
   if (!arg) {
-    return '';
+    // For empty strings, return quoted empty string to preserve the argument
+    switch (shell) {
+      case 'powershell':
+        return "''";
+      case 'cmd':
+        return '""';
+      case 'bash':
+      default:
+        return "''";
+    }
   }
 
   switch (shell) {

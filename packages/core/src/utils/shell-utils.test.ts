@@ -339,7 +339,7 @@ describe('escapeShellArg', () => {
 
       it('should handle empty strings', () => {
         const result = escapeShellArg('', 'cmd');
-        expect(result).toBe('');
+        expect(result).toBe('""');
       });
     });
 
